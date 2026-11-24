@@ -14,5 +14,4 @@ export type SectionMetadata = {
   slug: string;
   sequence: number;
   description: string;
-  lessons: LessonMetadata[];
 };

@@ -3,10 +3,13 @@
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { curriculum } from "@/data/curriculum";
 
-export function MobileCurriculum({ activeSection }: { activeSection?: string }) {
+export function MobileCurriculum() {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+  const activeSection = pathname.split("/")[2];
 
   return (
     <div className="lg:hidden">

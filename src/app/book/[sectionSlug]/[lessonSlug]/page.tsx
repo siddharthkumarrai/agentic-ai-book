@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getSection } from "@/data/curriculum";
+import { getLesson } from "@/lib/content/load-lessons";
 
 type PageProps = {
   params: Promise<{ sectionSlug: string; lessonSlug: string }>;
@@ -9,10 +10,13 @@ type PageProps = {
 export const instant = false;
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { sectionSlug } = await params;
+  const { sectionSlug, lessonSlug } = await params;
   const section = getSection(sectionSlug);
+  const lesson = section ? getLesson(sectionSlug, lessonSlug) : undefined;
   return {
-    title: section ? `${section.title} Lesson | Agentic AI Engineering` : "Lesson Not Found",
+    title: lesson
+      ? `${lesson.title} | ${section?.title} | Agentic AI Engineering`
+      : "Lesson Not Found",
   };
 }
 
@@ -20,6 +24,8 @@ export default async function LessonPage({ params }: PageProps) {
   const { sectionSlug, lessonSlug } = await params;
   const section = getSection(sectionSlug);
   if (!section) notFound();
+  const lesson = getLesson(sectionSlug, lessonSlug);
+  if (!lesson) notFound();
 
   return (
     <article className="reading-container">

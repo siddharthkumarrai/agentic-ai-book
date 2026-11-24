@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   --background: #fbfbfa;
@@ -9,6 +10,17 @@
   --surface: #f4f5f2;
   --surface-active: #ecefe9;
   --accent: #47705a;
+}
+
+.dark {
+  --background: #171918;
+  --foreground: #edf0ec;
+  --ink: #f1f4f0;
+  --muted: #adb5ae;
+  --border: #303431;
+  --surface: #202321;
+  --surface-active: #292d29;
+  --accent: #86b09a;
 }
 
 @theme inline {
@@ -22,6 +34,10 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+.dark body {
+  color-scheme: dark;
 }
 
 html { scroll-behavior: smooth; }
@@ -42,3 +58,68 @@ html { scroll-behavior: smooth; }
 .lesson-nav-card small { display: block; margin-bottom: 0.2rem; color: var(--muted); font-size: 0.75rem; font-weight: 500; }
 @media (min-width: 640px) { .reading-container { padding-inline: 2rem; } }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+.mdx-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  margin-block: 1.5rem;
+}
+
+.mdx-table-wrapper table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--background);
+}
+
+.mdx-table-wrapper th,
+.mdx-table-wrapper td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 1rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.mdx-table-wrapper tr:last-child td { border-bottom: 0; }
+.mdx-table-wrapper th { background: var(--surface); }
+
+.mdx-code-block {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  padding: 1rem;
+  color: var(--foreground);
+}
+
+.mdx-code {
+  border-radius: 0.25rem;
+  background: var(--surface);
+  padding: 0.1rem 0.3rem;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.9em;
+}
+
+.mdx-callout {
+  margin-block: 1.5rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  padding: 1rem;
+}
+
+.mdx-diagram {
+  margin-block: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  padding: 1.25rem;
+  text-align: center;
+}
+
+.mdx-diagram figcaption {
+  margin-top: 0.75rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+}

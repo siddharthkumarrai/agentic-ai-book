@@ -1,12 +1,13 @@
+"use client";
+
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { curriculum } from "@/data/curriculum";
 
-type CurriculumSidebarProps = {
-  activeSection?: string;
-};
-
-export function CurriculumSidebar({ activeSection }: CurriculumSidebarProps) {
+export function CurriculumSidebar() {
+  const pathname = usePathname();
+  const activeSection = pathname.split("/")[2];
   return (
     <aside className="hidden w-64 shrink-0 border-r border-[var(--border)] lg:block">
       <div className="sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto px-4 py-6">

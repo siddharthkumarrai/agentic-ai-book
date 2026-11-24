@@ -1,28 +1,18 @@
-import { curriculum, getSection } from "@/data/curriculum";
+import { curriculum } from "@/data/curriculum";
+import type { LessonMetadata } from "@/types/content";
 
 export function getSectionIndex(slug: string) {
   return curriculum.findIndex((section) => section.slug === slug);
 }
 
-export function getLessonNavigation(sectionSlug: string, lessonSlug: string) {
-  const sectionIndex = getSectionIndex(sectionSlug);
-  const section = getSection(sectionSlug);
-  const lessonIndex = section?.lessons.findIndex(
-    (lesson) => lesson.slug === lessonSlug,
-  ) ?? -1;
-
-  if (!section || lessonIndex < 0) return null;
-
-  const previous =
-    lessonIndex > 0
-      ? section.lessons[lessonIndex - 1]
-      : sectionIndex > 0
-        ? curriculum[sectionIndex - 1]
-        : null;
-  const next =
-    lessonIndex < section.lessons.length - 1
-      ? section.lessons[lessonIndex + 1]
-      : curriculum[sectionIndex + 1] ?? null;
-
-  return { previous, next };
+export function getLessonNavigation(
+  lessons: LessonMetadata[],
+  lessonSlug: string,
+) {
+  const lessonIndex = lessons.findIndex((lesson) => lesson.slug === lessonSlug);
+  if (lessonIndex < 0) return null;
+  return {
+    previous: lessonIndex > 0 ? lessons[lessonIndex - 1] : null,
+    next: lessonIndex < lessons.length - 1 ? lessons[lessonIndex + 1] : null,
+  };
 }

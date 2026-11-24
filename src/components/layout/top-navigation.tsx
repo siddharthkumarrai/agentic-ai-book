@@ -1,5 +1,6 @@
 import { BookOpen } from "lucide-react";
 import Link from "next/link";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 export function TopNavigation() {
   return (
@@ -13,6 +14,7 @@ export function TopNavigation() {
           <span className="sm:hidden">Agentic AI</span>
         </Link>
         <nav aria-label="Primary" className="flex items-center gap-1">
+          <ThemeToggle />
           <Link className="nav-link" href="/#roadmap">Roadmap</Link>
           <a
             className="nav-link grid size-9 place-items-center sm:flex sm:w-auto sm:gap-2 sm:px-3"
