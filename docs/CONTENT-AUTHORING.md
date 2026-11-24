@@ -2,11 +2,12 @@
 
 ## Adding a lesson
 
-1. Add typed navigation metadata in `src/data/curriculum.ts`.
+1. Add the section to `src/data/curriculum.ts` only if it is not already present.
 2. Create an MDX file under `content/lessons/[section-slug]/[lesson-slug].mdx`.
-3. Add the lesson metadata to frontmatter.
-4. Keep the lesson in the roadmap's numeric learning sequence.
-5. Do not add fake or invented lessons.
+3. Add all lesson-specific metadata to frontmatter.
+4. The frontmatter `sequence` field defines lesson ordering within the section.
+5. Previous and next links are generated automatically; do not duplicate them in frontmatter.
+6. Do not add fake or invented lessons.
 
 ## Required metadata
 
@@ -18,8 +19,6 @@ section: section-slug
 description: A concise explanation of the lesson.
 sequence: 1
 readingTimeMinutes: 12
-previousLesson: previous-slug
-nextLesson: next-slug
 ---
 ```
 

@@ -5,8 +5,6 @@ export type LessonMetadata = {
   description: string;
   sequence: number;
   readingTimeMinutes?: number;
-  previousLesson?: string;
-  nextLesson?: string;
 };
 
 export type SectionMetadata = {

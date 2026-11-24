@@ -13,7 +13,7 @@ function Heading({
   return <Tag {...props}>{children}</Tag>;
 }
 
-export function useMDXComponents(): MDXComponents {
+export function getMDXComponents(): MDXComponents {
   return {
     h1: ({ children, ...props }) => <Heading level={1} {...props}>{children}</Heading>,
     h2: ({ children, ...props }) => <Heading level={2} {...props}>{children}</Heading>,
@@ -40,4 +40,8 @@ export function useMDXComponents(): MDXComponents {
       </figure>
     ),
   };
+}
+
+export function useMDXComponents(): MDXComponents {
+  return getMDXComponents();
 }

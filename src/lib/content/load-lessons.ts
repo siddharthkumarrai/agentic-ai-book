@@ -1,9 +1,8 @@
-import "server-only";
-
 import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 import { z } from "zod";
+import { getSection } from "@/data/curriculum";
 import type { LessonMetadata } from "@/types/content";
 
 export const lessonFrontmatterSchema = z.object({
@@ -17,11 +16,14 @@ export const lessonFrontmatterSchema = z.object({
   description: z.string().min(1),
   sequence: z.number().int().positive(),
   readingTimeMinutes: z.number().int().positive().optional(),
-  previousLesson: z.string().optional(),
-  nextLesson: z.string().optional(),
 });
 
-export function getLessonsForSection(sectionSlug: string): LessonMetadata[] {
+export type LoadedLesson = LessonMetadata & {
+  source: string;
+};
+
+export function getLessonsForSection(sectionSlug: string): LoadedLesson[] {
+  if (!getSection(sectionSlug)) return [];
   const directory = path.join(process.cwd(), "content", "lessons", sectionSlug);
   if (!fs.existsSync(directory)) return [];
 
@@ -30,22 +32,41 @@ export function getLessonsForSection(sectionSlug: string): LessonMetadata[] {
     .filter((file) => /\.(md|mdx)$/.test(file))
     .map((file) => {
       const source = fs.readFileSync(path.join(directory, file), "utf8");
-      const parsed = lessonFrontmatterSchema.safeParse(matter(source).data);
+      const { data, content } = matter(source);
+      const parsed = lessonFrontmatterSchema.safeParse(data);
       if (!parsed.success) {
-        throw new Error(
-          `Invalid lesson frontmatter in ${path.relative(process.cwd(), path.join(directory, file))}`,
-        );
+        return null;
       }
       if (parsed.data.section !== sectionSlug) {
-        throw new Error(
-          `Lesson section mismatch in ${path.relative(process.cwd(), path.join(directory, file))}`,
-        );
+        return null;
       }
-      return parsed.data;
+      return { ...parsed.data, source: content };
     })
+    .filter((lesson): lesson is LoadedLesson => lesson !== null)
     .sort((first, second) => first.sequence - second.sequence);
 }
 
 export function getLesson(sectionSlug: string, lessonSlug: string) {
-  return getLessonsForSection(sectionSlug).find((lesson) => lesson.slug === lessonSlug);
+  if (!getSection(sectionSlug)) return undefined;
+  const filePath = path.join(
+    process.cwd(),
+    "content",
+    "lessons",
+    sectionSlug,
+    `${lessonSlug}.mdx`,
+  );
+  if (!fs.existsSync(filePath)) return undefined;
+
+  const source = fs.readFileSync(filePath, "utf8");
+  const { data, content } = matter(source);
+  const parsed = lessonFrontmatterSchema.safeParse(data);
+  if (!parsed.success) return undefined;
+  if (
+    parsed.data.section !== sectionSlug ||
+    parsed.data.slug !== lessonSlug
+  ) {
+    return undefined;
+  }
+
+  return { ...parsed.data, source: content };
 }
