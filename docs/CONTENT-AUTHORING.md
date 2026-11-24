@@ -31,6 +31,7 @@ readingTimeMinutes: 12
 - Use tables for meaningful comparisons.
 - Add alt text or textual descriptions to every image and diagram.
 - Use Mermaid only when it makes a concept easier to understand.
+- MDX is trusted repository content. Never render MDX supplied by an untrusted user; embedded component props require MDX expressions.
 
 ## Quizzes
 

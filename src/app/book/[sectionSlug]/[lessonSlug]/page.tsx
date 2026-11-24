@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { MDXRemote } from "next-mdx-remote/rsc";
-import { getSection } from "@/data/curriculum";
+import remarkGfm from "remark-gfm";
+import { curriculum, getSection } from "@/data/curriculum";
 import { getLesson, getLessonsForSection } from "@/lib/content/load-lessons";
 import { getLessonNavigation } from "@/lib/content/get-navigation";
 import { getMDXComponents } from "@/mdx-components";
@@ -14,14 +15,24 @@ type PageProps = {
 
 export const instant = false;
 
+export function generateStaticParams() {
+  return curriculum.flatMap((section) =>
+    getLessonsForSection(section.slug).map((lesson) => ({
+      sectionSlug: section.slug,
+      lessonSlug: lesson.slug,
+    })),
+  );
+}
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { sectionSlug, lessonSlug } = await params;
   const section = getSection(sectionSlug);
   const lesson = section ? getLesson(sectionSlug, lessonSlug) : undefined;
   return {
     title: lesson
-      ? `${lesson.title} | ${section?.title} | Agentic AI Engineering`
+      ? `${lesson.title} | ${section?.title}`
       : "Lesson Not Found",
+    description: lesson?.description,
   };
 }
 
@@ -43,7 +54,15 @@ export default async function LessonPage({ params }: PageProps) {
       <h1>{lesson.title}</h1>
       {lesson.description ? <p className="lead">{lesson.description}</p> : null}
       <div className="mdx-content mt-10">
-        <MDXRemote source={lesson.source} components={components} />
+        <MDXRemote
+          source={lesson.source}
+          components={components}
+          options={{
+            blockJS: false,
+            blockDangerousJS: true,
+            mdxOptions: { remarkPlugins: [remarkGfm] },
+          }}
+        />
       </div>
       <nav className="mt-12 grid gap-3 border-t border-[var(--border)] pt-6 sm:grid-cols-2" aria-label="Lesson navigation">
         {navigation?.previous ? (

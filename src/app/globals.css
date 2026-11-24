@@ -10,6 +10,9 @@
   --surface: #f4f5f2;
   --surface-active: #ecefe9;
   --accent: #47705a;
+  --primary-action-bg: #181a19;
+  --primary-action-fg: #ffffff;
+  --primary-action-hover: #303431;
 }
 
 .dark {
@@ -21,6 +24,9 @@
   --surface: #202321;
   --surface-active: #292d29;
   --accent: #86b09a;
+  --primary-action-bg: #edf0ec;
+  --primary-action-fg: #171918;
+  --primary-action-hover: #dce2dc;
 }
 
 @theme inline {
@@ -46,8 +52,16 @@ html { scroll-behavior: smooth; }
 .nav-link:hover { background: var(--surface); color: var(--ink); }
 .eyebrow { color: var(--accent); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
 .primary-button, .secondary-button { display: inline-flex; height: 2.75rem; align-items: center; justify-content: center; gap: 0.5rem; border-radius: 0.625rem; padding-inline: 1rem; font-size: 0.875rem; font-weight: 600; }
-.primary-button { background: var(--ink); color: white; }
-.primary-button:hover { background: #303431; }
+.primary-button { background: var(--primary-action-bg); color: var(--primary-action-fg); }
+.primary-button:hover:not(:disabled) { background: var(--primary-action-hover); }
+.primary-button:focus-visible,
+.secondary-button:focus-visible,
+.lesson-list-card:focus-visible,
+.lesson-nav-card:focus-visible,
+.nav-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
 .secondary-button { border: 1px solid var(--border); background: var(--background); }
 .secondary-button:hover { background: var(--surface); }
 .reading-container { width: 100%; max-width: 48rem; margin-inline: auto; padding: 3.5rem 1.25rem 5rem; }
@@ -56,6 +70,24 @@ html { scroll-behavior: smooth; }
 .reading-container .lead { margin-top: 1.25rem; color: var(--muted); font-size: clamp(1.125rem, 3vw, 1.35rem); line-height: 1.75; }
 .lesson-nav-card { display: flex; min-height: 5rem; align-items: center; gap: 0.75rem; border: 1px solid var(--border); border-radius: 0.75rem; padding: 1rem; font-weight: 600; }
 .lesson-nav-card small { display: block; margin-bottom: 0.2rem; color: var(--muted); font-size: 0.75rem; font-weight: 500; }
+.lesson-list-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.875rem;
+  background: var(--background);
+  padding: 1.125rem 1.25rem;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+.lesson-list-card:hover { border-color: var(--accent); background: var(--surface); }
+.lesson-list-copy,
+.lesson-list-card small,
+.lesson-list-card strong { display: block; }
+.lesson-list-card small { color: var(--accent); font-size: 0.75rem; font-weight: 700; }
+.lesson-list-card strong { margin-top: 0.35rem; font-size: 1rem; }
+.lesson-list-card span span { margin-top: 0.3rem; color: var(--muted); font-size: 0.875rem; line-height: 1.5; }
 @media (min-width: 640px) { .reading-container { padding-inline: 2rem; } }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 

@@ -2,8 +2,11 @@ import { ArrowRight, Bot, Gauge, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { TopNavigation } from "@/components/layout/top-navigation";
 import { curriculum } from "@/data/curriculum";
+import { getFirstLessonForSection } from "@/lib/content/load-lessons";
 
 export default function Home() {
+  const firstSection = curriculum[0];
+  const firstLesson = getFirstLessonForSection(firstSection.slug);
   const metrics = [
     { icon: Bot, value: "15", label: "Core sections" },
     { icon: Gauge, value: "20", label: "Week study plan" },
@@ -26,7 +29,14 @@ export default function Home() {
                 retrieve knowledge and operate within clear engineering boundaries.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
-                <Link href={`/book/${curriculum[0].slug}`} className="primary-button">
+                <Link
+                  href={
+                    firstLesson
+                      ? `/book/${firstSection.slug}/${firstLesson.slug}`
+                      : `/book/${firstSection.slug}`
+                  }
+                  className="primary-button"
+                >
                   Start reading
                   <ArrowRight aria-hidden="true" size={16} />
                 </Link>

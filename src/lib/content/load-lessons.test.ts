@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  getFirstLessonForSection,
+  getLesson,
+  getLessonsForSection,
   lessonFrontmatterSchema,
 } from "@/lib/content/load-lessons";
 
@@ -39,5 +42,22 @@ describe("lesson frontmatter validation", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+
+  it("loads the supplied lessons in frontmatter sequence order", () => {
+    const lessons = getLessonsForSection("llm-foundations");
+
+    expect(lessons.map(({ slug, sequence }) => ({ slug, sequence }))).toEqual([
+      { slug: "tokens-and-context", sequence: 1 },
+      { slug: "model-inference", sequence: 2 },
+    ]);
+  });
+
+  it("resolves the first available lesson and rejects unsafe or missing slugs", () => {
+    expect(getFirstLessonForSection("llm-foundations")?.slug).toBe(
+      "tokens-and-context",
+    );
+    expect(getLesson("llm-foundations", "../README")).toBeUndefined();
+    expect(getLesson("llm-foundations", "not-a-lesson")).toBeUndefined();
   });
 });
