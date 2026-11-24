@@ -1,5 +1,6 @@
 import type { MDXComponents } from "mdx/types";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import { KnowledgeCheck } from "@/components/content/knowledge-check";
 
 function Heading({
   level,
@@ -15,7 +16,7 @@ function Heading({
 
 export function getMDXComponents(): MDXComponents {
   return {
-    h1: ({ children, ...props }) => <Heading level={1} {...props}>{children}</Heading>,
+    h1: ({ children, ...props }) => <Heading level={2} {...props}>{children}</Heading>,
     h2: ({ children, ...props }) => <Heading level={2} {...props}>{children}</Heading>,
     h3: ({ children, ...props }) => <Heading level={3} {...props}>{children}</Heading>,
     h4: ({ children, ...props }) => <Heading level={4} {...props}>{children}</Heading>,
@@ -27,6 +28,7 @@ export function getMDXComponents(): MDXComponents {
     pre: (props) => <pre className="mdx-code-block" {...props} />,
     code: (props) => <code className="mdx-code" {...props} />,
     blockquote: (props) => <blockquote className="mdx-callout" {...props} />,
+    KnowledgeCheck,
     Callout: ({ children, title }: { children: ReactNode; title?: string }) => (
       <aside className="mdx-callout" aria-label={title ?? "Callout"}>
         {title ? <strong className="mb-1 block">{title}</strong> : null}

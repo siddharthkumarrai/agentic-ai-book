@@ -1,0 +1,228 @@
+---
+title: "Tokens and Context Windows"
+slug: "tokens-and-context"
+section: "llm-foundations"
+description: "Understand tokens, context-window limits, and practical ways to process documents that are larger than a model's context window."
+sequence: 1
+readingTimeMinutes: 12
+---
+
+# Tokens and Context Windows
+
+## Learning objectives
+
+By the end of this lesson, you should be able to:
+
+- Explain what a context window represents.
+- Describe the main engineering factors that influence a model's context limit.
+- Distinguish context capacity from the quality of a model's understanding.
+- Explain how chunking, summarization, and retrieval-augmented generation help process large documents.
+
+## 1. What is a context window?
+
+A context window is the maximum amount of tokenized information that a model can consider during a single model request. Depending on the model and provider, the context can include the current user message, earlier conversation messages, instructions, tool results, and other supplied information. The generated response may also use part of the available token budget.
+
+A context window is measured in tokens, not characters or words. The exact token count of a piece of text depends on the tokenizer used by the model.
+
+## 2. Who decides a model's context-window size?
+
+A model provider determines and publishes the context limit supported by each model. That limit is a result of model design and engineering decisions. It is not a random number, and different models can support different limits.
+
+Important factors include:
+
+### 2.1 Model architecture
+
+The architecture determines how the model represents and processes relationships between tokens. In transformer-based models, attention mechanisms help tokens use information from other tokens in the context.
+
+### 2.2 Attention implementation
+
+The model must process relationships across the available context. The attention design and its implementation affect how efficiently the model can handle long sequences.
+
+### 2.3 Memory and hardware
+
+Longer contexts can require more computational resources and memory. During inference, the key-value (KV) cache is one important part of the memory used to retain attention information for tokens already processed. GPU memory, available processing capacity, and serving infrastructure can therefore influence practical context limits.
+
+### 2.4 Training and long-context engineering
+
+A model needs to be trained and engineered to work effectively with long contexts. Increasing a published limit does not automatically guarantee that the model will use every part of a very long context equally well.
+
+> **Key idea:** The supported context limit is an engineering property of a model and its serving setup. It is not a measure of how intelligently the model will use every token.
+
+## 3. Comparing context-window sizes
+
+The following values are illustrative examples, not specifications for real models.
+
+| Illustrative model | Context window |
+|---|---:|
+| Model A | 8K tokens |
+| Model B | 32K tokens |
+| Model C | 128K tokens |
+| Model D | 1M tokens |
+
+A model with a 128K-token context window can accept a larger context than a model with an 8K-token window, assuming the provider allows those limits for the request.
+
+## 4. Does a larger context window mean a better AI model?
+
+No. A larger context window means that more information can potentially be supplied in one request. It does not automatically mean that the model is more intelligent or that it will find every important detail in a long document.
+
+Consider two different properties:
+
+- **Context capacity:** How much tokenized information the model can accept.
+- **Model capability:** How effectively the model understands, reasons about, and responds to the supplied information.
+
+These properties are related to system design, but they are not the same thing.
+
+A model may support a very large context and still overlook a relevant detail, misunderstand an instruction, or produce an incorrect answer.
+
+## 5. What happens when a document is larger than the context window?
+
+Imagine these illustrative limits:
+
+- Model context window: 100K tokens
+- User document: 120K tokens
+
+The document is 20K tokens larger than the model's stated context limit. The complete document cannot fit into that 100K-token context as-is.
+
+In practice, the usable space may be even smaller because the request can also contain system or developer instructions, conversation history, retrieved information, and a reserved budget for the model's output.
+
+### Knowledge check
+
+A model has a 100K-token context window. A user provides a 120K-token document. What is a reasonable way to handle this?
+
+<KnowledgeCheck questions={[
+  {
+    id: "context-window-q1",
+    prompt: "A model has a 100K-token context window. A user provides a 120K-token document. What is a reasonable way to handle this?",
+    options: [
+      { value: "a", label: "The model automatically processes the entire document perfectly." },
+      { value: "b", label: "The application may need to truncate, chunk, summarize, or retrieve parts of the document." },
+      { value: "c", label: "The model's latency becomes zero." }
+    ],
+    correctOption: "b",
+    explanation: "The document is larger than the available context. The application must manage the content—for example, by splitting it into chunks, summarizing it, retrieving relevant parts, or applying a deliberate truncation policy. None of these methods guarantees perfect understanding."
+  }
+]} />
+
+## 6. Three ways to work with documents that exceed the context window
+
+### 6.1 Chunking
+
+Chunking divides a large document into smaller pieces. Each piece is processed separately, so the application can send a manageable portion to the model at a time.
+
+For example, a 120K-token document could be split into six chunks of 20K tokens each:
+
+```text
+120K-token document
+        |
+        v
+     Chunking
+        |
+  +-----+-----+-----+-----+-----+-----+
+  |     |     |     |     |     |     |
+  v     v     v     v     v     v     v
+ 20K   20K   20K   20K   20K   20K
+```
+
+This is an illustrative split. Real chunk sizes depend on the model's available context, the surrounding instructions, the task, and the application's processing strategy.
+
+Chunking makes a large document easier to process in stages. However, a chunk still needs to fit alongside the prompt instructions and any output budget for that processing step.
+
+### 6.2 Summarization
+
+Summarization reduces the amount of text that must be carried forward.
+
+A common approach is:
+
+1. Divide the document into chunks.
+2. Generate a summary for each chunk.
+3. Combine the chunk summaries.
+4. Produce a final summary from the combined information.
+
+```text
+Chunk 1 -> Summary 1 --+
+Chunk 2 -> Summary 2 --+
+Chunk 3 -> Summary 3 --+--> Combined summaries --> Final summary
+Chunk 4 -> Summary 4 --+
+Chunk 5 -> Summary 5 --+
+Chunk 6 -> Summary 6 --+
+```
+
+Summarization can reduce the amount of information that needs to be passed to later steps. However, summaries may omit details. The application should preserve source references or other traceability when exact facts matter.
+
+### 6.3 Retrieval-Augmented Generation (RAG)
+
+Retrieval-Augmented Generation (RAG) avoids sending the entire document with every question. Instead, the application prepares the document for retrieval and supplies only the parts that appear relevant to the current query.
+
+A simplified RAG workflow is:
+
+1. Split the document into chunks.
+2. Create an embedding for each chunk.
+3. Store the chunks and their embeddings in a searchable index, commonly backed by a vector store.
+4. When a user asks a question, convert the query into a representation suitable for retrieval.
+5. Retrieve relevant chunks.
+6. Pass those chunks, along with the question and instructions, to the model.
+
+```text
+Document
+   |
+   v
+Chunking -> Embeddings -> Searchable index
+                                ^
+                                |
+User question -> Retrieval ----+
+                     |
+                     v
+             Relevant chunks
+                     |
+                     v
+                  LLM
+                     |
+                     v
+               Answer
+```
+
+RAG is useful when a system needs to answer questions from a large collection of information without placing the entire collection into every model request. Retrieval quality still matters: the system may fail to retrieve a useful chunk, and the model may still misunderstand or misuse retrieved information.
+
+## 7. Chunking, summarization, and RAG are not the same
+
+| Method | Main purpose | What it does |
+|---|---|---|
+| Chunking | Divide content | Splits a large document into smaller pieces. |
+| Summarization | Reduce content | Produces shorter representations of the source or its chunks. |
+| RAG | Find relevant content | Retrieves selected chunks for a particular question. |
+
+These methods can be combined. For example, a RAG system normally chunks content before indexing it, and it may summarize retrieved material when a task requires a shorter result.
+
+## 8. An important limitation
+
+Chunking does not automatically remove every context-window problem. Each processing step still has a limited token budget. The application must account for:
+
+- Instructions and prompt templates.
+- The current chunk or retrieved chunks.
+- Relevant conversation history or earlier summaries.
+- Tool results and other supplied context.
+- The output tokens reserved for the model's response.
+
+A reliable application plans these budgets instead of assuming that every chunk will fit automatically.
+
+## Lesson summary
+
+- A context window is the token budget a model can consider in a request.
+- Model providers set context limits based on model design and engineering constraints.
+- Architecture, attention, memory, hardware, training, and serving infrastructure can affect practical limits.
+- A larger context window does not guarantee better reasoning or perfect recall.
+- Chunking divides content, summarization reduces it, and RAG retrieves relevant parts.
+- These techniques can be combined, but every model call still has a context budget.
+
+## Key terms
+
+| Term | Meaning |
+|---|---|
+| Context window | The maximum tokenized context supported for a model request. |
+| Token | A unit produced by a model's tokenizer. |
+| Attention mechanism | A model component that helps tokens use information from other tokens. |
+| KV cache | Inference-time memory used to retain key and value information for previously processed tokens. |
+| Chunking | Dividing a large document into smaller pieces. |
+| Summarization | Creating a shorter representation of content. |
+| Embedding | A numeric representation used to support similarity-based retrieval. |
+| RAG | Supplying retrieved information to a model as part of generating an answer. |

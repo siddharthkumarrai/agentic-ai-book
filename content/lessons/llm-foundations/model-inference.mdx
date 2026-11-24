@@ -1,0 +1,733 @@
+---
+title: "Model Inference"
+slug: "model-inference"
+section: "llm-foundations"
+description: "Learn how trained language models generate responses, select tokens, produce structured output, stream results, call tools, and handle limitations."
+sequence: 2
+readingTimeMinutes: 28
+---
+
+# Model Inference
+
+## Learning objectives
+
+By the end of this lesson, you should be able to:
+
+- Distinguish model training from model inference.
+- Explain the purpose of system, developer, user, assistant, and tool messages.
+- Describe temperature, top-p, and deterministic generation settings.
+- Explain structured output and constrained decoding.
+- Compare streaming and non-streaming responses.
+- Distinguish a real tool call from text that only claims to call a tool.
+- Recognize common model limitations and design safeguards around them.
+
+## 1. What is model inference?
+
+A language model's development and use can be understood through two broad stages:
+
+1. **Training:** The model learns patterns and relationships from a large collection of examples.
+2. **Inference:** A trained model receives an input and generates an output based on what it has learned.
+
+For example, an application sends this prompt to a trained model:
+
+```text
+Explain artificial intelligence in simple words.
+```
+
+The model processes the input and generates a response such as:
+
+```text
+Artificial intelligence is the ability of machines
+ to perform tasks that normally require human intelligence.
+```
+
+That input-to-output process is inference.
+
+```text
+Input / prompt
+      |
+      v
+ Trained LLM
+      |
+      v
+Generated output
+```
+
+**Remember:** Training is when the model learns. Inference is when the trained model uses its learned capabilities to generate an output.
+
+## 2. Structured conversation messages
+
+An API conversation is generally represented as structured messages rather than as one undifferentiated block of text. Each message has a role or type that describes where it came from or what it represents.
+
+The exact representation and terminology can vary by provider and API. The following roles are a useful conceptual model.
+
+### 2.1 System message
+
+A system message provides high-level instructions about the assistant's intended behavior.
+
+Example:
+
+```text
+You are a helpful AI assistant.
+Be accurate.
+Use simple language.
+Avoid unnecessary technical jargon.
+```
+
+For an AI teacher, high-level instructions might say:
+
+```text
+You are an experienced programming teacher.
+Explain concepts from the beginner level.
+Use practical examples.
+```
+
+### 2.2 Developer message
+
+A developer message contains instructions supplied by the application developer. It defines how the model should behave within a particular application.
+
+For example, a customer-support application might provide these instructions:
+
+```text
+You are a customer support assistant for BookLeaf.
+
+Rules:
+1. Answer only questions related to BookLeaf.
+2. Never invent order details.
+3. Keep responses short.
+4. Follow the company's refund policy.
+```
+
+A useful conceptual distinction is:
+
+- **System:** High-level behavior instructions.
+- **Developer:** Application-specific instructions.
+
+Not every provider exposes these roles in exactly the same way. Some APIs distinguish system and developer messages, while others use different instruction fields or message formats.
+
+### 2.3 User message
+
+A user message contains the request or information supplied by the person using the application.
+
+Examples:
+
+```text
+Where is my order?
+```
+
+```text
+Explain Python loops.
+```
+
+### 2.4 Assistant message
+
+An assistant message is an output produced by the model. It can be a normal user-facing response, but it can also contain a structured request to use a tool.
+
+Example of a normal assistant response:
+
+```text
+Python loops allow a program to execute a block of code repeatedly.
+```
+
+### 2.5 Tool message or tool result
+
+A tool result contains information returned after an application or tool system executes a tool request. The exact message shape varies by provider.
+
+Consider an order-support example:
+
+```text
+SYSTEM
+You are a helpful customer support assistant.
+
+DEVELOPER
+Never invent order details. Use the order lookup tool.
+
+USER
+Where is my order 12345?
+
+ASSISTANT — TOOL REQUEST
+get_order_status({ "order_id": "12345" })
+
+TOOL RESULT
+Order status: Shipped.
+
+ASSISTANT — FINAL RESPONSE
+Your order 12345 has been shipped.
+```
+
+This is a simplified conceptual transcript. Real APIs may represent tool calls and results with typed objects or provider-specific fields rather than these exact text labels.
+
+## 3. Sampling: temperature, top-p, and deterministic settings
+
+A language model generates a response one token at a time. At each step, it calculates scores or probabilities for possible next tokens. A decoding strategy then selects a token.
+
+Consider this simplified example:
+
+Prompt:
+
+```text
+The sky is
+```
+
+Illustrative next-token probabilities:
+
+| Possible next token | Illustrative probability |
+|---|---:|
+| Blue | 70% |
+| Clear | 15% |
+| Beautiful | 10% |
+| Dark | 5% |
+
+These values are only an example. They are not measured probabilities from a particular model.
+
+### 3.1 Temperature
+
+Temperature changes how sharply or broadly the model's next-token probabilities influence selection. In general, a lower temperature makes selection more focused on higher-probability tokens. A higher temperature can make lower-probability alternatives more likely, producing more variation.
+
+Illustrative settings:
+
+| Temperature | General tendency |
+|---:|---|
+| 0.1 | More focused and predictable token choices. |
+| 0.7 | A balance with some variation. |
+| 1.5 | More varied and less predictable choices. |
+
+These values are examples only. Supported ranges and behavior depend on the model and provider. Some models do not expose every sampling parameter.
+
+**Practical example:** A task that produces SQL or structured business data may benefit from focused and consistent generation. A creative writing task may benefit from more variation. The correct setting depends on the task and must be evaluated.
+
+### 3.2 Top-p (nucleus sampling)
+
+Top-p controls the set of candidate tokens considered for selection. The model ranks candidate tokens by probability and includes the highest-probability candidates until their cumulative probability reaches the configured threshold.
+
+For example:
+
+| Token | Probability | Cumulative probability |
+|---|---:|---:|
+| A | 50% | 50% |
+| B | 25% | 75% |
+| C | 15% | 90% |
+| D | 10% | 100% |
+
+With top-p set to 0.75, this simplified example includes A and B. C and D are outside the selected candidate set.
+
+### 3.3 Temperature vs. top-p
+
+| Temperature | Top-p |
+|---|---|
+| Influences how probability differences affect token selection. | Limits the candidate set using cumulative probability. |
+| Lower values generally make selection more focused. | Lower values generally produce a smaller candidate set. |
+
+A practical tuning approach is to change one sampling parameter at a time and evaluate the result. Some provider documentation recommends avoiding unnecessary simultaneous changes to temperature and top-p.
+
+### 3.4 Deterministic settings
+
+Deterministic behavior means that the same input under the same conditions produces the same output.
+
+Settings and practices that may improve repeatability include:
+
+- Lower temperature or greedy decoding, where supported.
+- A fixed seed, where supported.
+- The same model version and configuration.
+- Consistent input data and tool results.
+
+However, temperature set to zero does not guarantee identical output in every model and provider. Backend implementation, model updates, and other serving details may still affect results.
+
+Deterministic or repeatable output also does not guarantee that the answer is correct.
+
+## 4. Structured output and constrained decoding
+
+Applications often need model responses in a predictable format so that code can process them safely.
+
+Imagine an application that calculates a student's result. It needs:
+
+- Student name
+- Total marks
+- Percentage
+- Result status
+
+A normal paragraph may be easy for a person to read, but harder for an application to process reliably.
+
+### 4.1 Structured output
+
+Structured output means asking the model to return information in a predefined format, such as JSON.
+
+Example:
+
+```json
+{
+  "student_name": "Rahul",
+  "total_marks": 420,
+  "percentage": 84,
+  "result": "PASS"
+}
+```
+
+The application can then access a specific field:
+
+```ts
+const result = {
+  student_name: "Rahul",
+  total_marks: 420,
+  percentage: 84,
+  result: "PASS"
+};
+
+console.log(result.percentage); // 84
+```
+
+With normal prose, the application may need to extract information from the text. With structured output, the information is placed into predefined fields.
+
+### 4.2 Constrained decoding
+
+A prompt that says "Return JSON" asks the model to follow a format, but a text instruction alone does not guarantee that the generated text will be valid JSON.
+
+For example, this is invalid JSON because property names and the string value are not quoted:
+
+```text
+{
+  student_name: Rahul,
+  percentage: 84
+}
+```
+
+Constrained decoding restricts or guides generation according to an allowed format or grammar. Depending on the provider, a JSON Schema or a similar specification can define the permitted structure.
+
+Example schema:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": { "type": "string" },
+    "age": { "type": "integer" }
+  },
+  "required": ["name", "age"],
+  "additionalProperties": false
+}
+```
+
+This schema specifies that:
+
+- `name` must be a string.
+- `age` must be an integer.
+- Both fields are required.
+- Additional properties are not allowed.
+
+### 4.3 Structured output vs. constrained decoding
+
+| Concept | Meaning |
+|---|---|
+| Structured output | The desired shape or format of a model response. |
+| Constrained decoding | A generation mechanism that restricts output to permitted structures or rules. |
+| JSON Schema | A way to describe an expected JSON structure. |
+
+> **Important:** Valid JSON does not mean the information is true or sensible. An object containing `"age": 250` can be valid JSON and still contain suspicious data. Applications must perform their own semantic and business-rule validation.
+
+Structured outputs are useful for database operations, API responses, classification, data extraction, and automated workflows.
+
+## 5. Streaming vs. non-streaming responses
+
+Suppose a model takes five seconds to generate a response. The application can either wait for the complete response or display pieces as they arrive.
+
+### 5.1 Non-streaming
+
+In a non-streaming request, the application receives the completed response after generation finishes.
+
+```text
+User sends prompt
+       |
+       v
+Model generates complete answer
+       |
+       v
+Complete response received
+       |
+       v
+Application displays response
+```
+
+### 5.2 Streaming
+
+In a streaming request, the model's response is delivered incrementally while it is being generated.
+
+Illustrative chunks:
+
+```text
+Chunk 1: Artificial Intelligence
+Chunk 2: is a technology
+Chunk 3: that enables machines
+Chunk 4: to perform intelligent tasks.
+```
+
+The user can begin reading before the entire response has been generated.
+
+### 5.3 Comparison
+
+| Streaming | Non-streaming |
+|---|---|
+| Delivers response pieces as they become available. | Delivers the completed response. |
+| Useful for interactive chat experiences. | Useful when the application needs the complete result before continuing. |
+| Can improve perceived responsiveness. | Can simplify processing of a completed result. |
+
+Streaming APIs often deliver events. For example, the OpenAI Responses API supports streaming through server-sent events. Exact event formats depend on the provider and API.
+
+**Agent developer warning:** Do not execute incomplete JSON or partial tool arguments as if they were complete. Wait until the tool request is complete, then validate its arguments before execution.
+
+## 6. Tool calling vs. text that only looks like a tool call
+
+A language model can answer questions, generate text, write code, and suggest actions. It cannot automatically access a user's computer or database just because it says that it is doing so. The application must provide tools and control their execution.
+
+### 6.1 What is tool calling?
+
+Tool calling (also called function calling by some providers) is a mechanism in which a model produces a structured request to use an available tool.
+
+Imagine a weather assistant with a tool named `getWeather`:
+
+```ts
+async function getWeather(city: string) {
+  // Fetch weather data from an external API.
+}
+```
+
+The user asks:
+
+```text
+What's the weather in Delhi?
+```
+
+The model may produce a structured tool request such as:
+
+```json
+{
+  "name": "getWeather",
+  "arguments": {
+    "city": "Delhi"
+  }
+}
+```
+
+The application then:
+
+1. Receives the tool request.
+2. Validates the arguments.
+3. Checks whether the user and application are allowed to perform the action.
+4. Executes the tool.
+5. Receives the tool result.
+6. Provides the result to the model, when another model response is needed.
+7. Returns the final response to the user.
+
+Example tool result:
+
+```json
+{
+  "city": "Delhi",
+  "temperature": "25°C",
+  "condition": "Clear"
+}
+```
+
+The model can then explain the returned information. The values above are illustrative; they are not a live weather report.
+
+### 6.2 Plain text that looks like a tool call
+
+Suppose the model responds:
+
+```text
+I am searching the weather API now.
+```
+
+That sentence alone does not execute an API call. It is ordinary generated text.
+
+Compare the two cases:
+
+| Plain text | Structured tool request |
+|---|---|
+| "I am searching the database now." | Tool name and structured arguments are returned. |
+| No function executes merely because the sentence appears. | The application can validate and execute the requested tool. |
+| It communicates a claim to the user. | It provides a machine-readable request for an application-controlled action. |
+
+### 6.3 Why tool calling matters in an AI agent
+
+An application may provide tools such as:
+
+| Tool | Purpose |
+|---|---|
+| `searchWeb` | Search the web. |
+| `getUserDetails` | Retrieve permitted user information. |
+| `saveNote` | Save a note. |
+| `sendEmail` | Send an email. |
+| `getWeather` | Retrieve weather information. |
+
+Tools allow an agent application to do more than generate answers. They provide a controlled way to interact with external systems.
+
+**Security principle:** Giving the model the ability to request a tool call is not the same as granting permission to execute it.
+
+The application developer should:
+
+- Validate tool arguments.
+- Check user permissions.
+- Require appropriate approval for sensitive actions.
+- Handle tool failures and timeouts.
+- Avoid treating model-generated arguments as trusted data.
+
+## 7. Model limitations
+
+Language models are useful, but they are not perfect. An agent engineer must understand their limitations and design the surrounding application to handle them.
+
+### 7.1 Hallucination
+
+A hallucination occurs when a model generates information that sounds plausible but is incorrect or unsupported.
+
+For example, a model might incorrectly claim that James Gosling created Python. Python was created by Guido van Rossum.
+
+A model can sound confident without being correct. It does not automatically check an external database for every statement it generates.
+
+Ways to reduce hallucination risk include:
+
+- Retrieve information from reliable sources.
+- Use RAG when the task depends on a known information collection.
+- Verify important claims.
+- Allow the model to state when it does not know.
+- Independently validate critical operations.
+
+RAG can reduce hallucination risk, but it does not eliminate it.
+
+### 7.2 Ambiguity
+
+Ambiguity occurs when a request does not provide enough information to determine what the user wants.
+
+For example:
+
+```text
+Book a table for tomorrow.
+```
+
+The application may still need to know:
+
+- Which restaurant?
+- How many people?
+- What time?
+- Which location?
+
+The model should not silently invent important details. A better response is to ask a clarifying question, such as:
+
+```text
+Which restaurant would you like to book, and for how many people?
+```
+
+When required information is missing, an agent should ask for clarification, state assumptions clearly, validate required inputs, and avoid guessing before important actions.
+
+### 7.3 Stale knowledge
+
+A model's learned information may be outdated. This matters for questions about:
+
+- Current company leaders.
+- Latest prices.
+- Current weather.
+- Recent news.
+- New software versions.
+- Updated laws and regulations.
+
+When current information is required, an application should use appropriate current sources, such as official documentation, web search, or an external API. It should also check timestamps where relevant.
+
+A model's stored knowledge is not the same as verified current external data.
+
+### 7.4 Non-determinism
+
+Non-determinism means that the same input is not guaranteed to produce exactly the same output every time.
+
+For example, two responses to "Explain machine learning" may use different wording while expressing similar ideas.
+
+Possible causes include sampling settings, token selection, backend implementation, and provider-side model changes.
+
+Ways to improve repeatability include:
+
+- Use supported deterministic settings where appropriate.
+- Pin a model version when possible.
+- Define structured outputs.
+- Validate outputs in the application.
+- Keep critical business logic outside the model.
+
+## 8. Handling model limitations in an agent application
+
+Consider a banking-support assistant:
+
+| Problem | Possible engineering response |
+|---|---|
+| Hallucination | Retrieve verified information from an authorized source. |
+| Ambiguity | Ask the user for missing information. |
+| Stale knowledge | Use a current API or trusted external source. |
+| Non-determinism | Use structured outputs and application-side validation. |
+| Invalid tool arguments | Validate arguments against a schema and business rules. |
+| Tool failure | Add error handling and a controlled retry strategy. |
+
+A professional agent engineer does more than write a good prompt. The engineer builds a system that remains reliable despite model limitations.
+
+## 9. A complete example: BookLeaf royalty support
+
+Imagine that a user asks a BookLeaf AI support assistant:
+
+```text
+Check my book royalty and tell me how much payment is pending.
+```
+
+A simplified workflow could be:
+
+```text
+1. User message
+       |
+       v
+2. Model inference
+   Understand the request and select an available tool.
+       |
+       v
+3. Tool request
+   get_author_royalty(author_id)
+       |
+       v
+4. Application checks permissions and executes the tool
+       |
+       v
+5. Database result
+   Pending royalty: ₹5,000
+       |
+       v
+6. Model formats the response
+       |
+       v
+7. Final response
+   Your pending royalty is ₹5,000.
+```
+
+This workflow uses several concepts from the lesson:
+
+- System and developer instructions define the assistant's behavior.
+- The user message supplies the request.
+- Inference generates the model's next response or tool request.
+- Tool calling retrieves actual information from the database.
+- Application checks and validation protect the operation.
+- The final response uses the returned result rather than inventing a value.
+
+The royalty amount is an illustrative example, not a real account balance.
+
+## Lesson summary
+
+| Topic | Meaning |
+|---|---|
+| Model inference | Generating output from a trained model. |
+| System message | High-level behavior instructions. |
+| Developer message | Application-specific instructions. |
+| User message | The user's request or supplied information. |
+| Assistant message | Model-generated output, which may include a tool request. |
+| Tool result | Information returned after a tool is executed. |
+| Temperature | Influences how probability differences affect token selection. |
+| Top-p | Limits the candidate token set using cumulative probability. |
+| Deterministic settings | Settings intended to improve repeatability where supported. |
+| Structured output | A response in a predefined data format. |
+| Constrained decoding | Generation restricted to allowed structures or rules. |
+| Streaming | Receiving response pieces as they are generated. |
+| Non-streaming | Receiving the completed response. |
+| Tool calling | A structured request that an application may validate and execute. |
+| Hallucination | Incorrect or unsupported information that may sound plausible. |
+| Ambiguity | A request with more than one possible meaning or missing details. |
+| Stale knowledge | Information that may be outdated. |
+| Non-determinism | Variation in outputs under apparently similar conditions. |
+
+## Knowledge check
+
+Answer these questions to test your understanding. Submit your choices to see the correct answers and explanations.
+
+<KnowledgeCheck questions={[
+  {
+    id: "inference-q1",
+    prompt: "What is the process of generating output from a trained LLM called?",
+    options: [
+      { value: "a", label: "Training" },
+      { value: "b", label: "Inference" },
+      { value: "c", label: "Tokenization" },
+      { value: "d", label: "Retrieval" }
+    ],
+    correctOption: "b",
+    explanation: "Inference is the process in which a trained model receives input and generates output."
+  },
+  {
+    id: "inference-q2",
+    prompt: "What does a low temperature generally encourage?",
+    options: [
+      { value: "a", label: "More random output" },
+      { value: "b", label: "More focused token selection" },
+      { value: "c", label: "A larger context window" },
+      { value: "d", label: "Faster internet access" }
+    ],
+    correctOption: "b",
+    explanation: "A lower temperature generally makes higher-probability tokens more dominant during selection. Exact behavior depends on the model and provider."
+  },
+  {
+    id: "inference-q3",
+    prompt: "What is the primary purpose of a JSON Schema?",
+    options: [
+      { value: "a", label: "To train a model" },
+      { value: "b", label: "To define an expected data structure" },
+      { value: "c", label: "To search the internet" },
+      { value: "d", label: "To measure latency" }
+    ],
+    correctOption: "b",
+    explanation: "A JSON Schema describes the expected structure and constraints of JSON data."
+  },
+  {
+    id: "inference-q4",
+    prompt: "A model says, 'I am searching the web now.' Is that sentence alone an actual tool call?",
+    options: [
+      { value: "a", label: "Yes, always" },
+      { value: "b", label: "No, it is only text" },
+      { value: "c", label: "It automatically runs Python" },
+      { value: "d", label: "It saves a database record" }
+    ],
+    correctOption: "b",
+    explanation: "A real tool call is a structured request handled by the application or tool-execution system. A natural-language claim alone does not execute anything."
+  },
+  {
+    id: "inference-q5",
+    prompt: "What does a streaming response mean?",
+    options: [
+      { value: "a", label: "The response is JSON only" },
+      { value: "b", label: "The response is received in pieces as it is generated" },
+      { value: "c", label: "No model inference takes place" },
+      { value: "d", label: "The response becomes permanent memory" }
+    ],
+    correctOption: "b",
+    explanation: "Streaming delivers response events or chunks incrementally instead of waiting for the complete response."
+  },
+  {
+    id: "inference-q6",
+    prompt: "A model gives a confident but incorrect answer. What limitation might this demonstrate?",
+    options: [
+      { value: "a", label: "Throughput" },
+      { value: "b", label: "Hallucination" },
+      { value: "c", label: "Concurrency" },
+      { value: "d", label: "Caching" }
+    ],
+    correctOption: "b",
+    explanation: "A hallucination is information that sounds plausible but is incorrect or unsupported."
+  },
+  {
+    id: "inference-q7",
+    prompt: "What is a suitable approach for answering a question about current weather?",
+    options: [
+      { value: "a", label: "Use only old training information" },
+      { value: "b", label: "Retrieve current information from a weather API" },
+      { value: "c", label: "Increase temperature" },
+      { value: "d", label: "Increase the context window" }
+    ],
+    correctOption: "b",
+    explanation: "Current weather changes over time, so the application should retrieve fresh data from a suitable current source."
+  }
+]} />
+
+## Further study
+
+The following provider documentation is relevant to the concepts in this lesson. Check the current documentation for the exact API behavior and supported parameters before implementing them:
+
+- OpenAI API documentation: function calling, structured outputs, and streaming.
+- Google Gemini API documentation: generation configuration and sampling parameters.
